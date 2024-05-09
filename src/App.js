@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { ApolloClient, InMemoryCache } from "@apollo/client";
 
 import "./App.css";
-import { queryContentUrl, GET_ALL_FREE_CONTENT, GET_ALL_EXCLUSIVE_CONTENT, GET_ALL_FREE_LIKE, GET_ALL_EXCLUSIVE_LIKE, GET_ALL_FREE_DISLIKE, GET_ALL_EXCLUSIVE_DISLIKE } from "./constants";
+import { queryContentUrl, subscriptionUrl, GET_ALL_SUBSCRIPTION, GET_ALL_FREE_CONTENT, GET_ALL_EXCLUSIVE_CONTENT, GET_ALL_FREE_LIKE, GET_ALL_EXCLUSIVE_LIKE, GET_ALL_FREE_DISLIKE, GET_ALL_EXCLUSIVE_DISLIKE } from "./constants";
 
 function App() {
   const [transfers, setTransfers] = useState([]);
@@ -11,6 +11,11 @@ function App() {
 
   const contentClient = new ApolloClient({
     uri: queryContentUrl,
+    cache: new InMemoryCache(),
+  });
+
+  const subscriptionClient = new ApolloClient({
+    uri: subscriptionUrl,
     cache: new InMemoryCache(),
   });
 
@@ -351,8 +356,64 @@ function App() {
 
           const result = {createdContentDislikedCount, percentageIncrease, monthlyContentDislikedCount}
 
-          console.log("result", result);
+      } catch (error) {
+        console.error("Could not fetch data", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
+    fetchAll();
+  }, []);
+
+   //SUBSCRIPTION
+   useEffect(() => {
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+    const creatorAddress = '0x802da5c76521317f2cc9d6ebad176e47a5f4205c';
+
+    const currentYear = new Date().getFullYear();
+    const januaryFirst = new Date(currentYear, 0, 1);
+
+    const startTimeInMilliseconds = Math.floor(januaryFirst.getTime());
+    const endTimeInMilliseconds = Date.now();
+
+    const startTimestamp = Math.floor(startTimeInMilliseconds / 1000); 
+    const endTimestamp = Math.floor(endTimeInMilliseconds / 1000);
+
+    const variables = {
+      startTimestamp,
+      endTimestamp,
+      nowInSeconds,
+      creator: creatorAddress,
+    }
+
+    const fetchAll = async () => {
+      setIsLoading(true);
+      const { data } = await subscriptionClient.query({
+        query: GET_ALL_SUBSCRIPTION, variables
+      });
+      
+      try {
+          const subscriptionCount= data.subscription.length
+          const monthlySubscriptionCount = new Array(12).fill(0);
+          let currentMonthCount = 0;
+          let previousMonthCount = 0;
+
+          for (const content of data.subscriptionInterval) {
+            const month = new Date(content.timestamp * 1000).getMonth();
+            monthlySubscriptionCount[month]++;
+
+            if (month === new Date().getMonth()) { 
+              currentMonthCount++;
+            } else if (month === new Date().getMonth() - 1) { 
+              previousMonthCount = monthlySubscriptionCount[month - 1];
+            }
+          }
+
+          const percentageIncrease = ((currentMonthCount - previousMonthCount) / previousMonthCount) * 100;
+
+          const result = {subscriptionCount, percentageIncrease, monthlySubscriptionCount}
+          console.log("result", result);
       } catch (error) {
         console.error("Could not fetch data", error);
       } finally {

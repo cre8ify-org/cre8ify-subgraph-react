@@ -1,8 +1,10 @@
 import { gql } from "@apollo/client";
 
 export const queryContentUrl =
-  "https://api.studio.thegraph.com/query/72160/cct/v1.2.0";
+  "https://api.studio.thegraph.com/query/72160/cct/v.0.0.2";
 
+export const subscriptionUrl=
+  "https://api.studio.thegraph.com/query/72160/subscription/v0.0.1"
 
 export const GET_ALL_FREE_CONTENT= gql`
 query GetContentBeforeNowByCreator($nowInSeconds: BigInt!, $creator: Bytes!, $startTimestamp: BigInt!, $endTimestamp: BigInt!) {
@@ -178,6 +180,35 @@ query GetDislikesBetweenTimestamps($nowInSeconds: BigInt!, $creator: Bytes!, $st
         exclusiveContentID
         creator
         timestamp
+    }
+  }
+`
+
+export const GET_ALL_SUBSCRIPTION= gql`
+query GetSubscriptionBetweenTimestamps($nowInSeconds: BigInt!, $creator: Bytes!, $startTimestamp: BigInt!, $endTimestamp: BigInt!)  {
+    subscription: subscribeds (
+        where: {
+          creator: $creator
+          timeSubscribed_lt: $nowInSeconds
+        }
+    ){
+		id
+        creator
+        subscriber
+        timeSubscribed
+    }
+
+    subscriptionInterval: subscribeds (
+        where: {
+          creator: $creator
+          timeSubscribed_gte: $startTimestamp
+          timeSubscribed_lte: $endTimestamp
+        }
+    ){
+		id
+        creator
+        subscriber
+        timeSubscribed
     }
   }
 `
